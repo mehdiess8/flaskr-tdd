@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from project.app import app, db
+from project import models
 
 TEST_DB = "test.db"
 
@@ -81,3 +82,26 @@ def test_delete_message(client):
     rv = client.get('/delete/1')
     data = json.loads(rv.data)
     assert data["status"] == 1
+
+def test_search(client):
+    # Log in using the helper function
+    login(client, 'admin', 'admin')
+
+    # Add a test entry using the existing '/add' route
+    client.post(
+        '/add',
+        data=dict(title="Testing search post", text="This is a test post"),
+        follow_redirects=True
+    )
+
+    # Verify that the post exists in the database
+    post = models.Post.query.filter_by(title="Testing search post").first()
+    assert post is not None, "Post wasn't added to the database"
+
+    # Perform the search
+    response = client.get('/search', query_string={'query': 'test'}, follow_redirects=True)
+    assert response.status_code == 200
+    assert b'Testing search post' in response.data
+    assert b'This is a test post' in response.data
+
+
