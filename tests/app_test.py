@@ -79,7 +79,11 @@ def test_messages(client):
 
 def test_delete_message(client):
     """Ensure the messages are being deleted"""
-    rv = client.get('/delete/1')
+    rv = client.get("/delete/1")
+    data = json.loads(rv.data)
+    assert data["status"] == 0
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.get("/delete/1")
     data = json.loads(rv.data)
     assert data["status"] == 1
 
@@ -103,5 +107,32 @@ def test_search(client):
     assert response.status_code == 200
     assert b'Testing search post' in response.data
     assert b'This is a test post' in response.data
+
+def test_delete_requires_login(client):
+    # Log in using the helper function and add a test entry using the existing '/add' route
+    login(client, 'admin', 'admin')
+    client.post('/add', data={'title': 'Post to Delete', 'text': 'This post will be deleted'}, follow_redirects=True)
+
+    # Verify that the post exists in the database
+    post = models.Post.query.filter_by(title="Post to Delete").first()
+    assert post is not None, "Post wasn't added to the database"
+    
+    post_id = post.id
+
+    # Log out the user using the logout helper function
+    logout(client)
+
+    # Attempt to delete the post without being logged in
+    response = client.get(f'/delete/{post_id}', follow_redirects=True)
+    assert response.status_code == 401 or b'You need to log in' in response.data  
+
+    # Log in and try to delete the post
+    login(client, 'admin', 'admin')
+    response = client.get(f'/delete/{post_id}', follow_redirects=True)
+
+    # Check that the deletion was successful
+    assert response.status_code == 200
+    assert models.Post.query.filter_by(id=post_id).first() is None, "Post was not deleted"
+
 
 
