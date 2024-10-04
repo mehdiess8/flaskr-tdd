@@ -19,7 +19,7 @@ import os
 
 basedir = Path(__file__).resolve().parent
 
-# configuration
+# configuration steps
 DATABASE = "flaskr.db"
 USERNAME = "admin"
 PASSWORD = "admin"
